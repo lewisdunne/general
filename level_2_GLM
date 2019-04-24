@@ -14,20 +14,14 @@ output_results_batch = fullfile(batch_folder, 'results_outputting.mat');
 
 
 % Define the level 1 batch containing the contrast names. Alternatively,
-% could use spm_select to select a representative SPM.mat file, and then
-% extract the contrast names using the command contrasts = {SPM.xCon.name}'
 contrast_batch = fullfile(batch_folder, 'SME_contrasts_template.mat');
 analysis_folder = 'GLM_SME';
 
 % Define subjects to be excluded
-% exclude = [4,10]; % Subject 27 excluded from SME due to insufficient trial counts (only 2 runs made it)
-% exclude = [4, 6, 9, 10, 13, 14, 26, 27, 30]; %conservative, n=17
-exclude = [4, 10, 12, 13, 27]; % neutral, n = 22
-% exclude = 4, 10]; % original (libreal)n=24
+exclude = [4, 10];
 
-% Folder where the results are outputted. We want this to be timestamped
+% Folder where the results are outputted.
 second_level_folder = fullfile(home, 'results');
-% dt = datestr(now,'mm-dd-yyyy_HHMMSS');
 
 %%
 % GET A STRUCT OF ALL CONTRAST NAMES AND TYPES
@@ -80,7 +74,6 @@ for con=1:length(contrasts)
             load(SPM_file)
             % Now get the con_*.nii file and put it into a struct
             con_file = SPM.xCon(con).Vcon.fname;
-%             contrasts(con).files(s).subject = sub_id;
             contrasts(con).files(s,1) = cellstr(fullfile(sub_analysis_folder, con_file));
             s = s + 1;
         else
@@ -133,6 +126,7 @@ for con=1:length(contrasts)
     clear matlabbatch
     
     % Images
+    % Just to be used for quickly viewing
     load(output_results_batch)
     matlabbatch{1, 1}.spm.stats.results.spmmat = cellstr(group_SPM_file);
     matlabbatch{1, 1}.spm.stats.results.conspec.contrasts = Inf; % All contrasts in the SPM file
