@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 spm('Defaults', 'FMRI'); % sets modality to fMRI
 % spm_get_defaults('stats.topoFDR',0);
-home = 'G:\PhD\AttMem';
+home = 'G:\PhD\Project';
 data_folder = fullfile(home, 'data');
 data_dir = dir(data_folder);
 batch_folder = fullfile(home, 'batches');
