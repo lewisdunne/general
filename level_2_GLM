@@ -1,0 +1,148 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%-----------SECOND LEVEL GLM--------------%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+spm('Defaults', 'FMRI'); % sets modality to fMRI
+% spm_get_defaults('stats.topoFDR',0);
+home = 'G:\PhD\AttMem';
+data_folder = fullfile(home, 'data');
+data_dir = dir(data_folder);
+batch_folder = fullfile(home, 'batches');
+level_2_batch = fullfile(batch_folder, '15_level_2_model_spec.mat');
+estimation_batch = fullfile(batch_folder, 'estimation.mat');
+level_2_contrast_batch = fullfile(batch_folder, '13_contrast_setup.mat');
+output_results_batch = fullfile(batch_folder, 'results_outputting.mat');
+
+
+% Define the level 1 batch containing the contrast names. Alternatively,
+% could use spm_select to select a representative SPM.mat file, and then
+% extract the contrast names using the command contrasts = {SPM.xCon.name}'
+contrast_batch = fullfile(batch_folder, 'SME_contrasts_template.mat');
+analysis_folder = 'GLM_SME';
+
+% Define subjects to be excluded
+% exclude = [4,10]; % Subject 27 excluded from SME due to insufficient trial counts (only 2 runs made it)
+% exclude = [4, 6, 9, 10, 13, 14, 26, 27, 30]; %conservative, n=17
+exclude = [4, 10, 12, 13, 27]; % neutral, n = 22
+% exclude = 4, 10]; % original (libreal)n=24
+
+% Folder where the results are outputted. We want this to be timestamped
+second_level_folder = fullfile(home, 'results');
+% dt = datestr(now,'mm-dd-yyyy_HHMMSS');
+
+%%
+% GET A STRUCT OF ALL CONTRAST NAMES AND TYPES
+%=========================================================================%
+% Load the level 1 contrast batch
+load(contrast_batch)
+
+for con=1:length(matlabbatch{1, 1}.spm.stats.con.consess)
+    
+    % Check if the contrast is a t contrast
+    if isfield(matlabbatch{1, 1}.spm.stats.con.consess{1,con}, 'tcon')
+        contrast_name = matlabbatch{1, 1}.spm.stats.con.consess{1,con}.tcon.name;
+        contrast_name = strrep(contrast_name, '<UNDEFINED>', analysis_folder)
+        contrast_type = 't';
+        contrasts(con).name = contrast_name;
+        contrasts(con).type = contrast_type;
+
+    elseif isfield(matlabbatch{1, 1}.spm.stats.con.consess{1,con}, 'fcon')
+        contrast_name = matlabbatch{1, 1}.spm.stats.con.consess{1,con}.fcon.name;
+        contrast_type = 'F';
+        contrasts(con).name = contrast_name;
+        contrasts(con).type = contrast_type;
+    end
+end
+clear matlabbatch
+
+%%
+% LOOP OVER CONTRASTS AND GET CON FILES FOR EACH SUBJECT INTO STRUCTURE
+%=========================================================================%
+for con=1:length(contrasts)
+    contrasts(con).name
+    
+    % Loop over each subject, load their SPM, and get that con file. Then
+    % put the con file into the contrasts structure.
+    s = 1;
+    for i=3:length(data_dir)
+        sub_folder = fullfile(data_dir(i).folder, data_dir(i).name);
+        sub_id = data_dir(i).name;
+        sub_split = strsplit(sub_id, '_');
+        subject_number = str2num(sub_split{1});
+        if ismember(subject_number, exclude)
+            disp(fprintf("Excluding subject %d...", subject_number))
+
+            continue
+        end
+        
+        sub_analysis_folder = fullfile(sub_folder, analysis_folder);
+        SPM_file = fullfile(sub_analysis_folder, 'SPM.mat');
+        if exist(SPM_file)
+            load(SPM_file)
+            % Now get the con_*.nii file and put it into a struct
+            con_file = SPM.xCon(con).Vcon.fname;
+%             contrasts(con).files(s).subject = sub_id;
+            contrasts(con).files(s,1) = cellstr(fullfile(sub_analysis_folder, con_file));
+            s = s + 1;
+        else
+            disp(sprintf("Check subject %s: SPM file not found.", sub_id));
+            continue
+        end
+    end
+    %%
+    % SPECIFY SECOND LEVEL
+    %=========================================================================%
+    final_destination = fullfile(second_level_folder, analysis_folder, contrasts(con).name)
+    if ~exist(final_destination)
+        mkdir(final_destination)
+    end
+    
+    load(level_2_batch)
+    matlabbatch{1}.spm.stats.factorial_design.dir = cellstr(final_destination);
+    matlabbatch{1}.spm.stats.factorial_design.des.t1.scans = contrasts(con).files;
+    
+    % Save the level 2 batch
+    batchname = sprintf('%s_batch', strrep(contrasts(con).name, ' ', ''));
+    save(fullfile(final_destination, batchname), 'matlabbatch');
+    
+    % Run the level 2 analysis
+    spm_jobman('run', matlabbatch)
+    clear matlabbatch
+    
+    %%
+    % RUN ESTIMATION & CONTRAST SPECIFICATION
+    %=====================================================================
+    % Get the SPM.mat file that was just made
+    group_SPM_file = fullfile(final_destination, 'SPM.mat');
+
+    % Run the estimation
+    load(estimation_batch)
+    matlabbatch{1, 1}.spm.stats.fmri_est.spmmat = cellstr(group_SPM_file);
+
+    
+    spm_jobman('run', matlabbatch)
+    clear matlabbatch
+    
+    % Do the contrasts
+    load(level_2_contrast_batch)
+    matlabbatch{1, 1}.spm.stats.con.spmmat = cellstr(group_SPM_file);
+    matlabbatch{1}.spm.stats.con.consess{1}.tcon.name = contrasts(con).name;
+    matlabbatch{1}.spm.stats.con.consess{1}.tcon.weights = [1];
+    matlabbatch{1}.spm.stats.con.consess{1}.tcon.sessrep = 'none';
+    matlabbatch{1}.spm.stats.con.delete = 1;
+    spm_jobman('run', matlabbatch)
+    clear matlabbatch
+    
+    % Images
+    load(output_results_batch)
+    matlabbatch{1, 1}.spm.stats.results.spmmat = cellstr(group_SPM_file);
+    matlabbatch{1, 1}.spm.stats.results.conspec.contrasts = Inf; % All contrasts in the SPM file
+    matlabbatch{1, 1}.spm.stats.results.conspec.thresh = 0.001;
+    matlabbatch{1, 1}.spm.stats.results.conspec.extent = 5;
+    matlabbatch{1, 1}.spm.stats.results.export{1, 1}.jpg = 1;
+    spm_jobman('run', matlabbatch);
+    clear matlabbatch % Clear it ready for image making batch
+    clear SPM_file_ppi
+    
+end
+
+cd(home);
