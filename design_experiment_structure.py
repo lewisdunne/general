@@ -69,24 +69,18 @@ def build_experiment_structure(design, blocks=1):
         raise ValueError("`design` Type must be tuple, list, or dict; got {} instead.".format(type(design)))
 
 
-# #### Example use of function
-
+# #### Example use of the function
 # Set up a basic study with 3 conditions of 10 trials per condition in one block
-
 
 basic_structure = build_experiment_structure(design=(3, 10), blocks=1)
 print(basic_structure)
 
-
 # Set up a study with 3 conditions, where each condition has a specific number of trials, and it is split across 2 blocks.
-
-
 specific_structure = build_experiment_structure(design={'standard':20, 'oddball':2, 'distracter':2}, blocks=2)
 print(specific_structure)
 
 
 # # Pseudorandomising Experiment Structure
-
 
 def pseudorandomise(experiment, rep_max, max_iterations=100, suppress_output=False):
     """Function that randomises an experiment structure in such a way that none of the trials will 
