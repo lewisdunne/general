@@ -22,7 +22,8 @@ import pandas as pd # Use pandas for working with dataframes
 # Loop over the files and read them in
 alldata = [] # Empty list, will become a list of dataframes that we unify
 for f in files:
-    alldata.append(pd.read_csv(f)) # Append this dataframe
+    f_df = pd.read_csv(f) # Read the file as a dataframe with pandas (pd).
+    alldata.append(f_df) # Append this dataframe
 
 df = pd.concat(alldata) # Concatenate all dataframes (i.e. stack them up)
 print(df.head()) # Print out the first 5 rows
