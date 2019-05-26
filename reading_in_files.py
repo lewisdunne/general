@@ -15,10 +15,7 @@ def get_files(path, extension=None):
 #-Example run ----------------------------------------------------------------#
 # Define the path in which your datafiles exist.
 path = 'C://Users//L//Documents//PsychoPy//MemANT//data'
-
 files = read_files(path, extension='csv')
-
-print(files)
 
 #-Example using pandas to aggregate all data files into one.
 import pandas as pd # Use pandas for working with dataframes
@@ -28,4 +25,4 @@ for f in files:
     alldata.append(pd.read_csv(f))
 
 df = pd.concat(alldata)
-print(df.head()) # Print out the first 5 rows.
+print(df.head()) # Print out the first 5 rows
