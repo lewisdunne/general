@@ -1,155 +1,100 @@
 import numpy as np
 import pandas as pd
-import warnings
-
 
 def generate_ngram(use_letters, size=None):
-    
+	# Uses `use_letters` string to generate an n_gram of size `size`.
     if size == None:
         size = len(use_letters)
-    
     to_shuffle = list(use_letters)
-    
     np.random.shuffle(to_shuffle)
-    
     remainder = ''.join(to_shuffle[size:])
     ngram = ''.join(to_shuffle[:size])
     return remainder, ngram
 
-def generate_ngrams(use_letters, ngram_size, samples):
+def make_ngram_bunch(use_letters, ngram_size, n):
+    # "Bunch" of n ngrams
+    bunch = {}
+    letters = use_letters
+    for i in range(n):
+        letters, ngram = generate_ngram(letters, ngram_size)
+        bunch[f'ngram_{i}'] = ngram
+    return letters, bunch
 
-    if len(use_letters) < (ngram_size * 3):
-        msg = 'Number of letters less than ngram_size * 3.'
-        warnings.warn(msg)
-            
+# Function to add a sample to ngram    
+def append_sample_ngram(ngram_bunch, use_letters, size):
+    appended = ngram_bunch
+    letters, appended['sample'] = generate_ngram(use_letters=use_letters, size=size)
+    return letters, appended
+
+def update_bunch(ngram_bunch, distribute=False, partial=False):
     
-    ngrams1 = []
-    ngrams2 = []
-    ngrams3 = []
-
-    for i in range(samples):
-        remain1, ngram1 = generate_ngram(use_letters, ngram_size)
-        remain2, ngram2 = generate_ngram(remain1, ngram_size)
-        remain3, ngram3 = generate_ngram(remain2, ngram_size)
-        ngrams1.append(ngram1)
-        ngrams2.append(ngram2)
-        ngrams3.append(ngram3)
-
-    all_ngrams = {'A':ngrams1,
-                   'B':ngrams2,
-                   'C':ngrams3}
-        
-    return all_ngrams
-
-
-def generate_sample(use_letters, size, exclude=None):
-    
-    to_shuffle = list(use_letters)
-    np.random.shuffle(to_shuffle)
-    if exclude == None:
-        use_letters = to_shuffle
-    else:
-        use_letters = ''.join([i for i in ''.join(to_shuffle).upper() if i not in exclude])
-
-    return use_letters[:size]
-
-
-
-def replace_ngram(use_letters, ngrams, distribute, replace):
-    cols = len(ngrams)
-    
+    updated = ngram_bunch.copy() # update a copy
+    sample = updated['sample']
+    if partial == True:
+        # If partial set True, cut off a third of the sample.
+        cut_amt = len(sample) - (int(len(sample) / 3)) # cut off 1 third
+        sample = updated['sample'][:cut_amt] # apply to sample
     if distribute == False:
-        position = np.random.randint(0, cols) # Gen random int
-        ngram = ngrams[position]
-        exclude = ''.join(ngrams)
-        # Generate a random sample of size n
-        sample = generate_sample(use_letters=use_letters,
-                                 size=len(ngram),
-                                 exclude=exclude)
-        if replace==True:
-            ngrams[position] = sample
-            positions = [position]
-        else:
-            positions = []
-    else:
-
-        exclude = ''.join(ngrams)
-        # Generate a random sample of size n
-        sample = generate_sample(use_letters=use_letters,
-                                 size=len(ngrams[0]),
-                                 exclude=exclude)
-        
-        positions = []
-        for i, ngram in enumerate(ngrams):
-            pos = np.random.randint(0, len(ngram)) # Get random position in this ngram
-            if replace==True:
-                ngrams[i] = ngram.replace(ngram[pos], sample[i])
-                positions.append(pos)
+        # If distribute set to false, replace letters of ngram_0 with sample.
+        # Allows for different number letters in sample and ngram_0
+        ngram = updated['ngram_0']
+        s = 0
+        for i in range(len(ngram)):
+            # Loop over ngram and replace each letter. This allows for partial replacement.
+            updated['ngram_0'] = updated['ngram_0'].replace(ngram[i], sample[s])
+            if s < len(sample)-1:
+                s += 1
             else:
-                positions.append([])
+                break
+    else:
+        # Distribte the sample across all ngrams
+        s = 0 # counter for number of sample letters
+        n_ngrams = len(updated.keys())-1
+        for i in range(n_ngrams): # minus 1 to exclude the sample
+            # Loop over all ngrams & replace the first letter with sample[s]
+            ngram = updated[list(updated.keys())[i]]
+            replaced = ngram.replace(ngram[0], sample[s])
+            updated[list(updated.keys())[i]] = replaced
+            if s < len(sample)-1:
+                s += 1
+            else:
+                break
+    return updated
 
-    return sample, ngrams, positions
-
-
-def replace_ngrams(use_letters, df, distribute, replace):
-    samples = []
-    positions = []
-    for row in range(len(df.index)):
-        sample, ngrams, pstn = replace_ngram(use_letters,
-                                             df.iloc[row].values.tolist(),
-                                             distribute=distribute,
-                                             replace=replace)
-        df.iloc[row] = ngrams
-        samples.append(sample)
-        positions.append(pstn)
-    
-    df['Samples'] = samples
-    df['Positions'] = positions
+def merge_dicts(dlist):
+    df = pd.concat([pd.Series(d) for d in dlist], axis=1)
     return df
-
-
-
-def generate_all_stimuli(use_letters, ngram_size, samples, replace, distribute, fname=None):
-    ngrams = generate_ngrams(use_letters,
-                         ngram_size=ngram_size,
-                         samples=samples)
-    df = pd.DataFrame(ngrams)
-    # make all uppercase
-    for c in df.columns:
-        df[c] = df[c].str.upper()
-
-    # 
-    df = replace_ngrams(use_letters,
-                        df, distribute=distribute,
-                        replace=replace)
-    print(df.head())
-    if fname is not None:
-        df.to_csv(fname)
         
+def make_ngram_samples(use_letters, ngram_size, m, n, distribute, partial, combine=False):
+    dlist = []
+    for i in range(m):
+        # Make bunch, append a unique `sample` ngram, and update it based on experimental condition
+        letters, bunch = make_ngram_bunch(use_letters=use_letters, ngram_size=ngram_size, n=n)
+        letters, bunch = append_sample_ngram(ngram_bunch=bunch, use_letters=letters, size=ngram_size)
+        if combine == True:
+            bunch = update_bunch(ngram_bunch=bunch, distribute=distribute, partial=partial)
+        dlist.append(bunch)
+    df = merge_dicts(dlist).T
     return df
-
 
 if __name__ == '__main__':
-    
-    #-Define some stuff ---------------------------------------#
-    # Letters to use in stimulus generation
-    use_letters = 'bcdfghjklmnpqrstvwxyz' # String of consonants
-    # ngram size
+    #-Define some stuff ------------------------------------------------------#
+    use_letters = 'bcdfghjklmnpqrstvwxyz'  # String of consonants
     ngram_size = 3
-    # How many trials
-    samples = 20
-    # Replace a random ngram with the Sample stimulus?
-    replace = True
-    # Distribute the Sample stim across each ngram for each row?
-    distribute = False
-    # Save the file
-    fname = None # file name if not None.
+    m = 10 # number of rows in the dataframe / condition
+    n = 3 # number of consonant trigrams per row
     
-    #-Run it --------------------------------------------------#
-    df = generate_all_stimuli(use_letters=use_letters,
-                              ngram_size=ngram_size,
-                              samples=samples,
-                              replace=replace,
-                              distribute=distribute,
-                              fname=fname)
-    print(df.head())
+    #-Run it -----------------------------------------------------------------#
+    # Test by making 4 dataframes, one for each condition.
+    match_easy = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
+                                    distribute=False, partial=False, combine=True)
+    match_hard = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
+                                    distribute=True, partial=False, combine=True) 
+    nomatch_easy = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
+                                    distribute=False, partial=False, combine=False)
+    nomatch_hard = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
+                                    distribute=True, partial=True, combine=True)
+    
+    
+    
+    
