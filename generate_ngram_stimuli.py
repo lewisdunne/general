@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 def generate_ngram(use_letters, size=None):
-	# Uses `use_letters` string to generate an n_gram of size `size`.
+    # Uses `use_letters` string to generate an n_gram of size `size`.
     if size == None:
         size = len(use_letters)
     to_shuffle = list(use_letters)
