@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 def generate_ngram(use_letters, size=None):
-    # Uses `use_letters` string to generate an n_gram of size `size`.
+	# Uses `use_letters` string to generate an n_gram of size `size`.
     if size == None:
         size = len(use_letters)
     to_shuffle = list(use_letters)
@@ -57,8 +57,7 @@ def update_bunch(ngram_bunch, distribute=False, partial=False):
             updated[list(updated.keys())[i]] = replaced
             if s < len(sample)-1:
                 s += 1
-            else:
-                break
+            else: break
     return updated
 
 def merge_dicts(dlist):
@@ -75,13 +74,16 @@ def make_ngram_samples(use_letters, ngram_size, m, n, distribute, partial, combi
             bunch = update_bunch(ngram_bunch=bunch, distribute=distribute, partial=partial)
         dlist.append(bunch)
     df = merge_dicts(dlist).T
+    df['sample_present'] = combine
+    df['distributed'] = distribute
+    df['partial'] = partial
     return df
 
 if __name__ == '__main__':
     #-Define some stuff ------------------------------------------------------#
     use_letters = 'bcdfghjklmnpqrstvwxyz'  # String of consonants
     ngram_size = 3
-    m = 10 # number of rows in the dataframe / condition
+    m = 5 # number of rows in the dataframe / condition
     n = 3 # number of consonant trigrams per row
     
     #-Run it -----------------------------------------------------------------#
@@ -94,7 +96,5 @@ if __name__ == '__main__':
                                     distribute=False, partial=False, combine=False)
     nomatch_hard = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
                                     distribute=True, partial=True, combine=True)
-    
-    
-    
-    
+    df = pd.concat([match_easy, match_hard, nomatch_easy, nomatch_hard]).reset_index(drop=True)
+#    df.to_csv('attention_stimuli_full.csv', index=False)
