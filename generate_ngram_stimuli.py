@@ -27,7 +27,6 @@ def append_sample_ngram(ngram_bunch, use_letters, size):
     return letters, appended
 
 def update_bunch(ngram_bunch, distribute=False, partial=False):
-    
     updated = ngram_bunch.copy() # update a copy
     sample = updated['sample']
     if partial == True:
