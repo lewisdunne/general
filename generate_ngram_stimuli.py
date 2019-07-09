@@ -80,9 +80,9 @@ def make_ngram_samples(use_letters, ngram_size, m, n, distribute, partial, combi
 
 if __name__ == '__main__':
     #-Define some stuff ------------------------------------------------------#
-    use_letters = 'bcdfghjklmnpqrstvwxyz'  # String of consonants
+    use_letters = 'bcdfghjklmnpqrstvwxyz'.upper()  # String of consonants
     ngram_size = 3
-    m = 5 # number of rows in the dataframe / condition
+    m = 30 # number of rows in the dataframe / condition
     n = 3 # number of consonant trigrams per row
     
     #-Run it -----------------------------------------------------------------#
@@ -96,4 +96,4 @@ if __name__ == '__main__':
     nomatch_hard = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
                                     distribute=True, partial=True, combine=True)
     df = pd.concat([match_easy, match_hard, nomatch_easy, nomatch_hard]).reset_index(drop=True)
-#    df.to_csv('attention_stimuli_full.csv', index=False)
+    df.to_csv('attention_stimuli_full.csv', index=False)
