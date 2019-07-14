@@ -10,6 +10,7 @@ portfolio_file = r''
 api_url = 'https://api.coinmarketcap.com/v1/ticker/bitcoin/'
 
 # Read in the portfolio table
+# Wants columns ('Coin', 'Name', 'Total Balance') where Total Balance is amt of that coin.
 pfdf = pd.read_csv(portfolio_file, sep='\t')
 
 # Loop over the Name column and retrieve the value per coin (vpc)
