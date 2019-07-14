@@ -5,7 +5,7 @@ import seaborn as sns
 sns.set(style='darkgrid')
 
 # Paste in file path between quotes
-portfolio_file = r'' # .txt or .csv
+portfolio_file = r''
 
 api_url = 'https://api.coinmarketcap.com/v1/ticker/bitcoin/'
 
@@ -33,6 +33,8 @@ print("Current portfolio value: {}".format(PV))
 # Make a plot
 fig, ax = plt.subplots()
 sns.barplot(x='Coin', y='Current USD Value', data=pfdf.sort_values(by='Current USD Value', ascending=False))
+txtypos = pfdf['Current USD Value'].max() * 0.95
+ax.text(x=len(pfdf.columns), y=txtypos, s='Total value: ${}'.format(round(PV, 3)))
 ax.set_title("Portfolio Summary")
 sns.despine()
 plt.show()
