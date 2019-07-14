@@ -1,3 +1,5 @@
+''' Super quick crypto portfolio log '''
+
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
