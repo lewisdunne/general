@@ -1,3 +1,27 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Aug 13 23:35:45 2019
+
+@author: L
+"""
+# Stimulus Design for Attention Trials
+# RULES:
+#-------
+# `use_letters` are all letters to create stimuli from.
+# Make an ngram, update `use_letters` so subsequent ngrams don't use the same letters.
+# If setting is EASY:
+#	if condition is PRESENT: copy ngram sample, insert into `bunch`, flank with two 'XXX' (sample is present)
+#	else if condition is ABSENT: create a new ngram from `use_letters`, flank with two 'XXX' (sample is absent)
+# Else if setting is HARD:
+#	if condition is PRESENT: 
+#       copy ngram, insert into bunch
+#		randomly select 2 letters from the sample ngram...
+#		create 2 new ngrams 
+#       replace one of the letters from each ngram with one of the 2 sample letters to have a bit of conflict
+#	else if condition is ABSENT: 
+#		randomly select 2 letters from the sample ngram...
+#		create 3 new ngrams from `use_letters`
+#		replace one letter from two (or 3?) of the 3 ngrams with each of the 2 letters from the sample ngram.
 import numpy as np
 import pandas as pd
 
@@ -7,152 +31,115 @@ def generate_ngram(use_letters, size=None):
         size = len(use_letters)
     to_shuffle = list(use_letters)
     np.random.shuffle(to_shuffle)
-    remainder = ''.join(to_shuffle[size:])
+    remaining_letters = ''.join(to_shuffle[size:])
     ngram = ''.join(to_shuffle[:size])
-    return remainder, ngram
 
-def make_ngram_bunch(use_letters, ngram_size, n):
-    # "Bunch" of n ngrams
+    return ngram, remaining_letters
+
+def make_bunch(use_letters, difficulty, condition, n):
     bunch = {}
-    letters = use_letters
-    for i in range(n):
-        letters, ngram = generate_ngram(letters, ngram_size)
-        bunch[f'ngram_{i}'] = ngram
-    return letters, bunch
-
-# Function to add a sample to ngram    
-def append_sample_ngram(ngram_bunch, use_letters, size):
-    appended = ngram_bunch
-    letters, appended['sample'] = generate_ngram(use_letters=use_letters, size=size)
-    return letters, appended
-
-def update_bunch(ngram_bunch, shuffle_sample=False, distribute=False, partial=False):
-    updated = ngram_bunch.copy() # update a copy
-    sample = updated['sample']
-    
-    # Shuffle the sample ngram so that its order in the probe ngrams is unpredictable
-    if shuffle_sample == True:
-        slist = list(sample)
-        np.random.shuffle(slist)
-        sample = ''.join(slist)
-    
-    if partial == True:
-        # If partial set True, cut off a RANDOM third of the sample.  
-        cut_amt = len(sample) - (int(len(sample) / 3)) # cut off 1 third
-        sample = sample[:cut_amt] # apply to sample
-        
-    if distribute == False:
-        # If distribute set to false, replace letters of ngram_0 with sample.
-        # Allows for different number letters in sample and ngram_0
-        ngram = updated['ngram_0']
-        s = 0
-        for i in range(len(ngram)):
-            # Loop over ngram and replace each letter. This allows for partial replacement.
-            updated['ngram_0'] = updated['ngram_0'].replace(ngram[i], sample[s])
-            if s < len(sample)-1:
-                s += 1
-            else:
-                break
+    sample_ngram, remaining_letters = generate_ngram(use_letters, 3)
+    bunch['sample'] = sample_ngram
+    if difficulty == 0:
+        if condition == 0:
+            # Sample is absent: make a new ngram and put it in pos 0
+            ngram_0, remaining_letters = generate_ngram(remaining_letters, 3)
+            bunch['ngram_0'] = ngram_0
+        elif condition == 1:
+            # Random sort sample ngram and put it in
+            bunch['ngram_0'] = sample_ngram
+            to_shuffle = list(bunch['ngram_0'])
+            np.random.shuffle(to_shuffle)
+            bunch['ngram_0'] = ''.join(to_shuffle)
+        bunch['ngram_1'] = 'XXX'
+        bunch['ngram_2'] = 'XXX'
     else:
-        # Distribte the sample across all ngrams
-        s = 0 # counter for number of sample letters
-        if partial==True:
-            print(sample)
-            # Generate a list 
+        if condition == 0:
             
-        n_ngrams = len(updated.keys())-1
-        for i in range(n_ngrams): # minus 1 to exclude the sample
-            # Loop over all ngrams & replace the first letter with sample[s]
-            ngram = updated[list(updated.keys())[i]]
-            replaced = ngram.replace(ngram[0], sample[s])
-            updated[list(updated.keys())[i]] = replaced
-            if s < len(sample)-1:
-                s += 1
-            else: break
-        
-    return updated
-
-def shuffle_dict(d, shuffle_between=None, shuffle_within=None, ignore=None):
-    result = d.copy()
-    if ignore is not None:
-        igval = result[ignore]
-        #igdict = {ignore:igval}
-        
-        del result[ignore]
-        
-    if shuffle_between == True:
-        dvals = list(result.values())
-        np.random.shuffle(dvals) # Shuffle the values - retains key names, just switches around the ngrams
-        i = 0 # iterator
-        for key, val in result.items():
-            result[key] = dvals[i]
-            i += 1
+            # Generate 3 new ngrams and input the letters from sample into 2. Replace sample with the third.
+            for i in range(n):
+                this_ngram, remaining_letters = generate_ngram(remaining_letters, 3)
+                bunch[f'ngram_{i}'] = this_ngram
+            # And one more for the sample
+            new_sample_ngram, remaining_letters = generate_ngram(remaining_letters, 3)
+            bunch['sample'] = new_sample_ngram
+            to_shuffle = list(bunch['sample']) # shuffle to get random 2 letters
+            np.random.shuffle(to_shuffle)
+            random_selection = to_shuffle[0:2]
+            bunch['ngram_0'] = bunch['ngram_0'].replace(bunch['ngram_0'][0], random_selection[0])
+            bunch['ngram_1'] = bunch['ngram_1'].replace(bunch['ngram_1'][0], random_selection[1])
+            #------- This line can be deleted if we don't want the flank letters to be repeated in all flanking ngrams...
+            bunch['ngram_2'] = bunch['ngram_2'].replace(bunch['ngram_2'][0], random_selection[1])
+            #-----------------------------------------------------------------#
+            
+        elif condition == 1:
+            to_shuffle = list(bunch['sample']) # shuffle to get random 2 letters
+            np.random.shuffle(to_shuffle)
+            random_selection = to_shuffle[0:2]
+            # Generate 3 new ngrams and input the letters from sample into 2. Replace sample with the third.
+            for i in range(n-1): # only 2 of them
+                this_ngram, remaining_letters = generate_ngram(remaining_letters, 3)
+                bunch[f'ngram_{i}'] = this_ngram
+            bunch['ngram_0'] = bunch['ngram_0'].replace(bunch['ngram_0'][0], random_selection[0])
+            bunch['ngram_1'] = bunch['ngram_1'].replace(bunch['ngram_1'][0], random_selection[1])
+            bunch['ngram_2'] = sample_ngram
     
-    if shuffle_within == True:
-        # Retain the key order, shuffle the values
-        for key, val in result.items():
-            s = list(result[key]) # make temp var equal to the ngram as a list.
-            np.random.shuffle(s) # Shuffle it
-            result[key] = ''.join(s) # Join it and then put it back in.
+    # Small block of code that shuffles the `ngram_n` in the dict, but not the sample
+    # Shuffle letters within each ngram
+    these_ngrams = [] # Get ready to shuffle BETWEEN each ngram
+    for key, val in bunch.items():
+        if key == 'sample':
+            continue # leave the sample as it is
+        # Shuffle the letters of each ngram and put it back in.
+        to_shuffle = list(bunch[key])
+        np.random.shuffle(to_shuffle)
+        # Put it back in
+        bunch[key] = ''.join(to_shuffle)
+        these_ngrams.append(bunch[key])
     
-    result[ignore] = igval
-    return result
+    # Shuffle the order of these ngrams
+    np.random.shuffle(these_ngrams)
+    for i, ng in enumerate(these_ngrams):
+        bunch[f'ngram_{i}'] = ng
+    
+    return bunch
 
-def merge_dicts(dlist):
-    df = pd.concat([pd.Series(d) for d in dlist], axis=1)
-    return df
-        
-def make_ngram_samples(use_letters, ngram_size, m, n, shuffle_sample, distribute, partial, combine=False):
-    dlist = []
+def build_stimuli(use_letters, difficulty, condition, m, n):
+    master_bunch = {}
     for i in range(m):
-        # Make bunch, append a unique `sample` ngram, and update it based on experimental condition
-        letters, bunch = make_ngram_bunch(use_letters=use_letters, ngram_size=ngram_size, n=n)
-        letters, bunch = append_sample_ngram(ngram_bunch=bunch, use_letters=letters, size=ngram_size)            
-        if combine == True:
-            bunch = update_bunch(ngram_bunch=bunch, shuffle_sample=shuffle_sample, 
-                                 distribute=distribute, partial=partial)       
+        bunch = make_bunch(letters, difficulty, condition, n)
+        for key, value in bunch.items():
+            bunch[key] = [value]
+            
+            if i == 0:
+                master_bunch[key] = [value]
+            else:
+                master_bunch[key].append(value)
         
-        if distribute==True:
-            # Condition == hard
-            shuffle_within = True
-            shuffle_between = False # Updates to True if partial == True...
-            if partial == True:
-                shuffle_between = True
-            bunch = shuffle_dict(d=bunch, shuffle_within=shuffle_within, 
-                                 shuffle_between=shuffle_between, ignore='sample') # Letters appear in same order as in sample, but in random position within each ngram.
-#            bunch = shuffle_dict(d=bunch, shuffle_between=True, shuffle_within=True, ignore='sample') # Letters appear random order from sample, and in random position within ngram. Much hard
-        else:
-            # Condition == easy
-            bunch = shuffle_dict(d=bunch, shuffle_between=True, ignore='sample')
-#            bunch = shuffle_dict(d=bunch, shuffle_between=True, shuffle_within=True, ignore='sample') # Randomise position AND letter order. Makes it harder
-        dlist.append(bunch)
-        
-    df = merge_dicts(dlist).T
-    df['match'] = combine
-    df['distributed'] = distribute
-    df['partial'] = partial
-    # Change the match column to be false when partial is true, because it isn't a match.
-    df.loc[df['partial']==True, 'match'] = False
-    
-    return df
+    return master_bunch
 
 if __name__ == '__main__':
-    #-Define some stuff ------------------------------------------------------#
-    use_letters = 'bcdfghjklmnpqrstvwxyz'.upper()  # String of consonants
-    ngram_size = 3
-    m = 30 # number of rows in the dataframe / condition
-    n = 3 # number of consonant trigrams per row
-    shuffle_sample = True # make it a bit less predictable
+
+    letters = 'bcdfghjklmnpqrstvwxyz'.upper()
+    m = 10 # How many trials?
     
-    #-Run it -----------------------------------------------------------------#
-    # Test by making 4 dataframes, one for each condition.
-    match_easy = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
-                                    shuffle_sample=shuffle_sample, distribute=False, partial=False, combine=True)
-    match_hard = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
-                                    shuffle_sample=shuffle_sample, distribute=True, partial=False, combine=True) 
-    nomatch_easy = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
-                                    shuffle_sample=shuffle_sample, distribute=False, partial=False, combine=False)
-    nomatch_hard = make_ngram_samples(use_letters, ngram_size=ngram_size, m=m, n=n, 
-                                    shuffle_sample=shuffle_sample, distribute=True, partial=True, combine=True)
-    df = pd.concat([match_easy, match_hard, nomatch_easy, nomatch_hard]).reset_index(drop=True)
-#    df.to_csv('attention_stimuli_full_vB.csv', index=False)
+    easy_present = build_stimuli(use_letters=letters, difficulty=0, condition=1, m=m, n=3) # Easy condition, sample present
+    easy_absent = build_stimuli(use_letters=letters, difficulty=0, condition=0, m=m, n=3) # Easy condition, sample absent
+    hard_present = build_stimuli(use_letters=letters, difficulty=1, condition=1, m=m, n=3) # Hard condition, sample present
+    hard_absent = build_stimuli(use_letters=letters, difficulty=1, condition=0, m=m, n=3) # Hard condition, sample absent.
+    
+    # Convert to dataframes
+    easy_present_df = pd.DataFrame(easy_present)
+    easy_present_df['difficulty'] = 'easy'
+    easy_present_df['condition'] = 'present'
+    easy_absent_df = pd.DataFrame(easy_absent)
+    easy_absent_df['difficulty'] = 'easy'
+    easy_absent_df['condition'] = 'absent'
+    hard_present_df = pd.DataFrame(hard_present)
+    hard_present_df['difficulty'] = 'hard'
+    hard_present_df['condition'] = 'present'
+    hard_absent_df = pd.DataFrame(hard_absent)
+    hard_absent_df['difficulty'] = 'hard'
+    hard_absent_df['condition'] = 'absent'
+    # Concatenate for 1 big dataframe
+    df = pd.concat([easy_present_df, easy_absent_df, hard_present_df, hard_absent_df]).reset_index(drop=True)
