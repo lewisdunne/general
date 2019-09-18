@@ -13,17 +13,19 @@ def get_files(path, extension=None):
     return files
     
 #-Example run ----------------------------------------------------------------#
-# Define the path in which your datafiles exist.
-path = 'C://Users//L//Documents//PsychoPy//MemANT//data'
-files = read_files(path, extension='csv')
+if __name__ == '__name__':
+    
+    # Define the path in which your datafiles exist.
+    path = 'C://Users//L//Documents//PsychoPy//MemANT//data'
+    files = read_files(path, extension='csv')
 
-#-Example using pandas to aggregate all data files into one.
-import pandas as pd # Use pandas for working with dataframes
-# Loop over the files and read them in
-alldata = [] # Empty list, will become a list of dataframes that we unify
-for f in files:
-    f_df = pd.read_csv(f) # Read the file as a dataframe with pandas (pd).
-    alldata.append(f_df) # Append this dataframe
+    #-Example using pandas to aggregate all data files into one.
+    import pandas as pd # Use pandas for working with dataframes
+    # Loop over the files and read them in
+    alldata = [] # Empty list, will become a list of dataframes that we unify
+    for f in files:
+        f_df = pd.read_csv(f) # Read the file as a dataframe with pandas (pd).
+        alldata.append(f_df) # Append this dataframe
 
-df = pd.concat(alldata) # Concatenate all dataframes (i.e. stack them up)
-print(df.head()) # Print out the first 5 rows
+    df = pd.concat(alldata) # Concatenate all dataframes (i.e. stack them up)
+    print(df.head()) # Print out the first 5 rows
